@@ -1,10 +1,14 @@
 (exports ? window).FS_Data = class FS_Data
 
   @regions = ((if i == 0 then 'Nat' else "Reg#{i}") for i in [0..10])
+  @regions_2015 = ((if i == 0 then 'us' else "region#{i}") for i in [0..10])
   @hhsRegions = ((if i == 0 then 'nat' else "hhs#{i}") for i in [0..10])
   @targets_seasonal = ['onset', 'peakweek', 'peak']
+  @targets_seasonal_2015 = ['onset', 'pkwk', 'pkper']
   @targets_local = ['1_week', '2_week', '3_week', '4_week']
+  @targets_local_2015 = ['1wk', '2wk', '3wk', '4wk']
   @targets = @targets_seasonal.concat(@targets_local)
+  @targets_2015 = @targets_seasonal_2015.concat(@targets_local_2015)
   @errors = ['LS', 'AE']
   @error_labels = ['log score', 'absolute error']
   @wILI = null
@@ -14,7 +18,7 @@
       return
     if season == 2014
       @epiweeks = (('' + if i <= 13 then 201440 + i else 201500 + i - 13) for i in [1..32])
-    else if season == 2015
+    else if season in [2015, 20150]
       @epiweeks = (('' + if i <= 12 then 201540 + i else 201600 + i - 12) for i in [2..30])
     else
       throw new Error('unsupported season: ' + season)
@@ -34,7 +38,7 @@
       @wILI[name] = []
       Epidata.fluview(getCallback(hhs, name), hhs, weekRange)
 
-  @update = (data, error, target, region, epiweek) ->
+  @update = (data, season, error, target, region, epiweek) ->
     totals = null
     if target == 'combine'
       targets = @targets
@@ -45,6 +49,9 @@
     else
       targets = [target]
     regions = if region == 'combine' then @regions else [region]
+    if season == 20150
+      targets = (@targets_2015[@targets.indexOf(t)] for t in targets)
+      regions = (@regions_2015[@regions.indexOf(r)] for r in regions)
     nr = regions.length
     nt = targets.length
     teams = (t for t of data)
@@ -90,25 +97,28 @@
     for [value, text] in _.zip(values, labels)
       select.append($('<option/>', { value: value, text: text }))
 
-  @loadFiles: (files, onSuccess, onFailure) ->
+  @loadFiles: (files, season, onSuccess, onFailure) ->
     # sanity checks
     if files.length == 0
       return onFailure('no files selected')
     for file in files
-      if !file.name.endsWith('.zip')
+      if season in [2014, 2015] and !file.name.endsWith('.zip')
         return onFailure("#{file.name} is not a zip file")
+      else if season == 20150 and !file.name.endsWith('.csv')
+        return onFailure("#{file.name} is not a csv file")
     # load files one after another
     fileIndex = 0
     data = {}
+    loadFunc = if season == 20150 then loadFull else loadSingle
     callback = (name, fileData, error) ->
       if error?
         return onFailure(error)
       data[name] = fileData
       if fileIndex < files.length
-        loadSingle(files[fileIndex++], callback)
+        loadFunc(files[fileIndex++], callback)
       else
         return onSuccess((t for t of data), data)
-    loadSingle(files[fileIndex++], callback)
+    loadFunc(files[fileIndex++], callback)
 
   loadSingle = (file, callback) ->
     reader = new FileReader()
@@ -151,3 +161,44 @@
     fields.shift()
     fix = (n) -> if Number.isNaN(n) then -10 else n
     return (fix(parseFloat(f)) for f in fields)
+
+  loadFull = (file, callback) ->
+    reader = new FileReader()
+    reader.onload = (event) ->
+      data = {}
+      error = null
+      csv = event.target.result
+      try
+        for region in FS_Data.regions_2015
+          data[region] = {}
+          for target in FS_Data.targets_2015
+            values = parseFullCSV(csv, region, target)
+            unpackValues(data[region], values, [target])
+      catch ex
+        error = ex.message ? '' + ex
+      callback(file.name, data, error)
+    reader.readAsText(file)
+
+  parseFullCSV = (csv, l, t) ->
+    fix = (n) -> if Number.isNaN(n) then -10 else n
+    results = []
+    AEresults = []
+    for row in csv.split('\n').slice(1)
+      row = row.split(',')
+      if row.length == 0
+        continue
+      location = row[1]
+      target = row[2]
+      ls = row[7]
+      if location == l and target == t
+        results.push(fix(parseFloat(ls)))
+        if row.length == 9
+          ae = row[8]
+          AEresults.push(fix(parseFloat(ae)))
+    if AEresults.length == 0
+      # pad the abs err scores with 0s. to change when AE scores are available
+      for i in [0...results.length]
+        results.push(0)
+    else
+      results = results.concat(AEresults)
+    return results

@@ -33,7 +33,7 @@
       <div>
         <p class="title" style="padding:24px;font-size:3em;">
           FluScores
-        </p>
+        </p>    
         <p style="border-bottom:1px solid #ccc;margin-bottom:12px;padding-bottom:12px;">
           Select zip files below. You can compare different teams by selecting multiple files.
           <br />
@@ -42,12 +42,16 @@
         <p>
           Season: <select id="season_select">
             <option value="2014">2014-2015</option>
-            <option value="2015" selected>2015-2016</option>
+            <option value="2015">2015-2016 (zip file)</option>
+            <option value="20150" selected>2015-2016 (csv file)</option>
           </select> |
           <label>Files: <input id="files" type="file" multiple /></label> |
           <input id="button_load" type="submit" value="Analyze Files" />
           <br />
           <div id="message" style="color:#c44;margin-top:12px;"></div>
+        </p>
+        <p style'"border-bottom:1px solid #ccc;margin-bottom:12px;padding-bottom:12px;">
+          Fluscores has been developed and tested under Chrome. Other browsers may or may not work for now.
         </p>
       </div>
     </div>
@@ -60,10 +64,10 @@
           <label>Error Type: <select id="select_error"></select></label>&nbsp;|&nbsp;
           <label>Target: <select id="select_target"></select></label>&nbsp;|&nbsp;
           <label>Region: <select id="select_region"></select></label>&nbsp;|&nbsp;
-          <label>Group: <select id="select_epiweek">
-            <option value="plot" selected>[by epiweek]</option>
+          <label>Group: <select id="select_epiweek"> 
+            <option value="plot" selected>[by epiweek]</option> 
             <option value="combine">[by team]</option>
-          </select></label>
+          </select></label>&nbsp;
         </div>
         <div style="padding-top:4px;">
           <input id="button_shake" type="button" value="Shake It Up"></input>&nbsp;|&nbsp;
@@ -91,7 +95,7 @@
       if(data === null) {
         return;
       }
-      var values = FS_Data.update(data, error.val(), target.val(), region.val(), epiweek.val());
+      var values = FS_Data.update(data, parseInt($('#season_select').val()), error.val(), target.val(), region.val(), epiweek.val());
       var plotData = {};
       for(var t = 0; t < teams.length; t++) {
         plotData[teams[t]] = [];
@@ -136,7 +140,7 @@
         loadButton.prop('disabled', true);
         FS_Data.init(parseInt($('#season_select').val()));
         FS_Data.addAllOptions(error, target, region);
-        FS_Data.loadFiles($('#files')[0].files, onLoadSuccess, onLoadError);
+        FS_Data.loadFiles($('#files')[0].files, parseInt($('#season_select').val()), onLoadSuccess, onLoadError);
       });
       shakeButton.click(function() {
         plot.shakeItUp();
