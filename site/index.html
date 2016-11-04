@@ -1,0 +1,156 @@
+<!doctype html>
+<!-- hi :) -->
+<html>
+  <head>
+    <title>Flu Scores</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://fonts.googleapis.com/css?family=Alegreya+SC:700" rel="stylesheet" type="text/css">
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.0.0-alpha1/jquery.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jszip/2.5.0/jszip.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/3.0.7/pixi.min.js"></script>
+    <script type="text/javascript" src="delphi_epidata.js"></script>
+    <script type="text/javascript" src="fs_data.js"></script>
+    <script type="text/javascript" src="fs_plot.js"></script>
+    <style>
+      * { margin: 0; box-sizing: border-box; }
+      html, body { width: 100%; height: 100%; }
+      body { background: radial-gradient(#fff,#ccc); }
+      body { font-family: Calibri, Candara, Segoe, "Segoe UI", Optima, Arial, sans-serif; text-align: center; }
+      .full { width: 100%; height: 100%; }
+      .centered { display: flex; justify-content: center; align-items: center; }
+      .title { font-family: "Alegreya SC", "Rockwell Extra Bold", "Rockwell Bold", monospace; text-spacing: 1px; text-shadow: 0px 0px 10px #888; }
+    </style>
+  </head>
+  <body>
+    <div style="position:absolute;top:0;right:0;font-color:#444;font-size:0.6em;text-shadow: 0px 0px 10px #888;">
+      <img style="width:128px;height:18px;" src="http://www.cmu.edu/common/standard-v4/images/wordmark.gif"></img>
+      <br>
+      dfarrow0@gmail.com | <a target="_blank" href="changelog.txt">v2</a>
+    </div>
+    <div id="part0" class="full centered">
+      <div>
+        <p class="title" style="padding:24px;font-size:3em;">
+          FluScores
+        </p>
+        <p style="border-bottom:1px solid #ccc;margin-bottom:12px;padding-bottom:12px;">
+          Select zip files below. You can compare different teams by selecting multiple files.
+          <br />
+          All processing is done locally in your web browser; no data is sent to the server.
+        </p>
+        <p>
+          Season: <select id="season_select">
+            <option value="2014">2014-2015</option>
+            <option value="2015" selected>2015-2016</option>
+          </select> |
+          <label>Files: <input id="files" type="file" multiple /></label> |
+          <input id="button_load" type="submit" value="Analyze Files" />
+          <br />
+          <div id="message" style="color:#c44;margin-top:12px;"></div>
+        </p>
+      </div>
+    </div>
+    <div id="part1" class="full">
+      <p class="title" style="padding:16px;font-size:1.5em;position:absolute;top:0;left:0;">
+        FluScores
+      </p>
+      <div class="centered" style="flex-direction:column;height:64px;">
+        <div style="padding-bottom:4px;border-bottom:1px solid #888;">
+          <label>Error Type: <select id="select_error"></select></label>&nbsp;|&nbsp;
+          <label>Target: <select id="select_target"></select></label>&nbsp;|&nbsp;
+          <label>Region: <select id="select_region"></select></label>&nbsp;|&nbsp;
+          <label>Group: <select id="select_epiweek">
+            <option value="plot" selected>[by epiweek]</option>
+            <option value="combine">[by team]</option>
+          </select></label>
+        </div>
+        <div style="padding-top:4px;">
+          <input id="button_shake" type="button" value="Shake It Up"></input>&nbsp;|&nbsp;
+          <label>Show Points: <input id="checkbox_points" type="checkbox"></input></label>&nbsp;|&nbsp;
+          <label>Overlay wILI: <input id="checkbox_wili" type="checkbox"></input></label>
+        </div>
+      </div>
+      <div class="centered" style="height:calc(100% - 64px);">
+        <canvas id="canvas" style="width:100%;height:100%;"></canvas>
+      </div>
+    </div>
+    <script>
+    var loadButton = $('#button_load');
+    var error = $('#select_error');
+    var target = $('#select_target');
+    var region = $('#select_region');
+    var epiweek = $('#select_epiweek');
+    var shakeButton = $('#button_shake');
+    var pointsCheckbox = $('#checkbox_points');
+    var wiliCheckbox = $('#checkbox_wili');
+    var teams = null;
+    var data = null;
+    var plot = null;
+    function update() {
+      if(data === null) {
+        return;
+      }
+      var values = FS_Data.update(data, error.val(), target.val(), region.val(), epiweek.val());
+      var plotData = {};
+      for(var t = 0; t < teams.length; t++) {
+        plotData[teams[t]] = [];
+        for(var i = 0; i < FS_Data.epiweeks.length; i++) {
+          plotData[teams[t]].push(values[t][i]);
+        }
+      }
+      if(epiweek.val() == 'combine') {
+        plot.barMode();
+      } else {
+        plot.lineMode();
+      }
+      wiliCheckbox.prop('disabled', region.val() == 'combine');
+      var wILI = null;
+      if(wiliCheckbox.prop('checked')) {
+        wILI = FS_Data.wILI[region.val()];
+      }
+      plot.setWili(wILI);
+      plot.update(plotData);
+    }
+    function onLoadSuccess(t, d) {
+      teams = t;
+      data = d;
+      $('#part0').hide(0);
+      $('#part1').show(0, function() {
+        plot = new FS_Plot($('#canvas'), teams);
+        update();
+      });
+    }
+    function onLoadError(message) {
+      $('#message').text(message);
+      loadButton.prop('disabled', false);
+    }
+    $(document).ready(function() {
+      $('#part1').hide(0);
+      error.change(update);
+      target.change(update);
+      region.change(update);
+      epiweek.change(update);
+      wiliCheckbox.click(update);
+      loadButton.click(function() {
+        loadButton.prop('disabled', true);
+        FS_Data.init(parseInt($('#season_select').val()));
+        FS_Data.addAllOptions(error, target, region);
+        FS_Data.loadFiles($('#files')[0].files, onLoadSuccess, onLoadError);
+      });
+      shakeButton.click(function() {
+        plot.shakeItUp();
+      });
+      pointsCheckbox.click(function() {
+        plot.setPointsVisible(pointsCheckbox.prop('checked'));
+      });
+      $(window).on('resize', function() {
+        if(plot !== null) {
+          var canvas = $('#canvas');
+          plot.resize(canvas.width(), canvas.height());
+        }
+      });
+    });
+    </script>
+  </body>
+</html>

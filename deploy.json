@@ -1,0 +1,49 @@
+{
+  "type": "delphi deploy config",
+  "version": 1,
+  "actions": [
+    {
+      "type": "compile-coffee",
+      "src": "site/fs_data.coffee",
+      "dst": "site/fs_data.coffee_js"
+    },
+    {
+      "type": "compile-coffee",
+      "src": "site/fs_plot.coffee",
+      "dst": "site/fs_plot.coffee_js"
+    },
+    {
+      "type": "minimize-js",
+      "src": "site/fs_data.coffee_js",
+      "dst": "site/fs_data.coffee_js_min"
+    },
+    {
+      "type": "minimize-js",
+      "src": "site/fs_plot.coffee_js",
+      "dst": "site/fs_plot.coffee_js_min"
+    },
+    {
+      "type": "copy",
+      "src": "site/index.html",
+      "dst": "/var/www/html/misc/fluscores/index.html",
+      "add-header-comment": true
+    },
+    {
+      "type": "copy",
+      "src": "site/fs_data.coffee_js_min",
+      "dst": "/var/www/html/misc/fluscores/fs_data.js",
+      "add-header-comment": true
+    },
+    {
+      "type": "copy",
+      "src": "site/fs_plot.coffee_js_min",
+      "dst": "/var/www/html/misc/fluscores/fs_plot.js",
+      "add-header-comment": true
+    },
+    {
+      "type": "copy",
+      "src": "README.md",
+      "dst": "/var/www/html/misc/fluscores/changelog.txt"
+    }
+  ]
+}
