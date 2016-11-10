@@ -6,21 +6,21 @@
     "// compile",
     {
       "type": "compile-coffee",
-      "src": "site/fs_data.coffee",
+      "src": "site/fs_data.coffee"
     },
     {
       "type": "compile-coffee",
-      "src": "site/fs_plot.coffee",
+      "src": "site/fs_plot.coffee"
     },
     
     "// minimize",
     {
       "type": "minimize-js",
-      "src": "site/fs_data.js",
+      "src": "site/fs_data.js"
     },
     {
       "type": "minimize-js",
-      "src": "site/fs_plot.js",
+      "src": "site/fs_plot.js"
     },
     
     "// make changelog",
